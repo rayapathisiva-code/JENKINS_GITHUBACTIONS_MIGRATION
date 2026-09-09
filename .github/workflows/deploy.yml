@@ -1,0 +1,64 @@
+name: Promote Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      artifact-run-id:
+        description: "GitHub Actions run ID containing the build artifact"
+        required: true
+        type: string
+      image-tag:
+        description: "Git SHA tag produced by CI"
+        required: true
+        type: string
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options: [development, production]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  deploy-development:
+    if: inputs.environment == 'development'
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download build artifact from CI run
+        uses: actions/download-artifact@v4
+        with:
+          name: springboot-build-${{ inputs.image-tag }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.artifact-run-id }}
+      - name: Deployment gate
+        run: |
+          echo "DEV deployment selected"
+          echo "Image: springboot-jenkins-actions-poc:${{ inputs.image-tag }}"
+          test -f rendered-manifest.yaml
+          bash scripts/deploy.sh development springboot-jenkins-actions-poc "${{ inputs.image-tag }}"
+
+  deploy-production:
+    if: inputs.environment == 'production'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download approved build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: springboot-build-${{ inputs.image-tag }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.artifact-run-id }}
+      - name: Production deployment
+        run: |
+          echo "PRODUCTION deployment approved"
+          echo "Promoting immutable image tag: springboot-jenkins-actions-poc:${{ inputs.image-tag }}"
+          test -f rendered-manifest.yaml
+          bash scripts/deploy.sh production springboot-jenkins-actions-poc "${{ inputs.image-tag }}"

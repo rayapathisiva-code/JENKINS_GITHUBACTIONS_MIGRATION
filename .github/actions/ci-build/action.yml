@@ -1,0 +1,30 @@
+name: Build and Test
+description: Reusable Maven build, unit test and dependency-cache component replacing Jenkins Shared Library build logic
+inputs:
+  java-version:
+    description: Java version
+    required: false
+    default: "17"
+  maven-goals:
+    description: Maven goals
+    required: false
+    default: "clean verify"
+runs:
+  using: composite
+  steps:
+    - name: Set up Java and Maven cache
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: ${{ inputs.java-version }}
+        cache: maven
+    - name: Build and unit test
+      shell: bash
+      run: mvn -B ${{ inputs.maven-goals }}
+    - name: Show test reports
+      if: always()
+      shell: bash
+      run: |
+        if [ -d target/surefire-reports ]; then
+          find target/surefire-reports -maxdepth 1 -type f -name "*.txt" -print
+        fi

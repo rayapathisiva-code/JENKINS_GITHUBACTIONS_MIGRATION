@@ -1,0 +1,74 @@
+name: Reusable CI/CD
+
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        required: true
+        type: string
+      java-version:
+        required: false
+        type: string
+        default: "17"
+    outputs:
+      image-tag:
+        description: Immutable Git SHA image tag
+        value: ${{ jobs.build.outputs.image-tag }}
+      artifact-name:
+        description: Build artifact name
+        value: ${{ jobs.build.outputs.artifact-name }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.meta.outputs.image-tag }}
+      artifact-name: ${{ steps.meta.outputs.artifact-name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build, test and cache dependencies
+        uses: ./.github/actions/ci-build
+        with:
+          java-version: ${{ inputs.java-version }}
+
+      - name: Helm quality check
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.4
+      - run: helm lint helm/springboot-poc
+      - run: helm template springboot-poc helm/springboot-poc > rendered-manifest.yaml
+
+      - name: Security check - Trivy filesystem
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          exit-code: "0"
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+
+      - name: Docker build
+        run: docker build --pull -t "${{ inputs.image-name }}:${GITHUB_SHA}" .
+
+      - name: Generate metadata
+        id: meta
+        shell: bash
+        run: |
+          echo "image-tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          echo "artifact-name=springboot-build-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload application artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: springboot-build-${{ github.sha }}
+          path: |
+            target/*.jar
+            rendered-manifest.yaml
+          if-no-files-found: error
+          retention-days: 7
