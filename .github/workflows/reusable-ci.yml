@@ -44,7 +44,7 @@ jobs:
       - run: helm template springboot-poc helm/springboot-poc > rendered-manifest.yaml
 
       - name: Security check - Trivy filesystem
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           scan-type: fs
           scan-ref: .
