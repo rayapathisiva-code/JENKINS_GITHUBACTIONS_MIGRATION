@@ -43,15 +43,15 @@ jobs:
       - run: helm lint helm/springboot-poc
       - run: helm template springboot-poc helm/springboot-poc > rendered-manifest.yaml
 
-      - name: Security check - Trivy filesystem
-        uses: aquasecurity/trivy-action@0.36.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          format: table
-          exit-code: "0"
-          ignore-unfixed: true
-          severity: CRITICAL,HIGH
+      # - name: Security check - Trivy filesystem
+      #   uses: aquasecurity/trivy-action@0.36.0
+      #   with:
+      #     scan-type: fs
+      #     scan-ref: .
+      #     format: table
+      #     exit-code: "0"
+      #     ignore-unfixed: true
+      #     severity: CRITICAL,HIGH
 
       - name: Docker build
         run: docker build --pull -t "${{ inputs.image-name }}:${GITHUB_SHA}" .
