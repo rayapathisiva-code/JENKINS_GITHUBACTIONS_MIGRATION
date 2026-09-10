@@ -72,3 +72,13 @@ jobs:
             rendered-manifest.yaml
           if-no-files-found: error
           retention-days: 7
+      - name: Display Build Information
+        run: |
+            echo "========================================"
+            echo "BUILD INFORMATION FOR PROMOTION"
+            echo "========================================"
+            echo "Run ID       : ${{ github.run_id }}"
+            echo "Git SHA      : ${{ github.sha }}"
+            echo "Image Tag    : ${{ github.sha }}"
+            echo "Artifact     : springboot-build-${{ github.sha }}"
+            echo "========================================"
