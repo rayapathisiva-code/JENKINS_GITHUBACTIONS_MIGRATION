@@ -14,29 +14,7 @@ pipeline {
     }
 
     stage('Build & Unit Test') {
-      steps { buildAndPushImage() }
-    }
-
-    stage('Security & Quality') {
-      parallel {
-        stage('Security') {
-          steps { securityScan() }
-        }
-        stage('Quality') {
-          steps { qualityScan() }
-        }
-      }
-    }
-
-    stage('Docker Build') {
-      steps { buildAndPushImage(env.IMAGE_NAME, env.IMAGE_TAG) }
-    }
-
-    stage('Generate Deployment Artifact') {
-      steps {
-        sh 'helm template springboot-poc helm/springboot-poc --set image.repository=$IMAGE_NAME --set image.tag=$IMAGE_TAG > rendered-manifest.yaml'
-        publishArtifact()
-      }
+      steps { ciPipeline() }
     }
 
     stage('DEV Deployment') {
