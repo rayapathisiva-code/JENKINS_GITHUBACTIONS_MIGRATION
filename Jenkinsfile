@@ -2,11 +2,7 @@
 pipeline {
   agent any
   options { timestamps() }
-  parameters {
-    booleanParam(name: 'DEPLOY_DEV', defaultValue: false, description: 'Deploy to development')
-    booleanParam(name: 'DEPLOY_PROD', defaultValue: false, description: 'Request production deployment')
-  }
-
+ 
   environment {
     IMAGE_NAME = 'springboot-jenkins-actions-poc'
     IMAGE_TAG = "${env.GIT_COMMIT}"
@@ -18,7 +14,7 @@ pipeline {
     }
 
     stage('Build & Unit Test') {
-      steps { buildAndTest() }
+      steps { buildAndPushImage() }
     }
 
     stage('Security & Quality') {
