@@ -44,7 +44,7 @@ pipeline {
             }
         }
 
-        /*
+
         stage('Docker Build') {
             steps {
                 buildAndPushImage(
@@ -53,7 +53,7 @@ pipeline {
                 )
             }
         }
-        */
+    
 
         stage('Helm Validation') {
             steps {
