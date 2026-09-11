@@ -1,35 +1,100 @@
 @Library('shiva-shared-lib') _
+
 pipeline {
-  agent any
-  options { timestamps() }
- 
-  environment {
-    IMAGE_NAME = 'springboot-jenkins-actions-poc'
-    IMAGE_TAG = "${env.GIT_COMMIT}"
-  }
+    agent any
 
-  stages {
-    stage('Checkout') {
-      steps { checkout scm }
+    options {
+        timestamps()
     }
 
-    stage('Build & Unit Test') {
-      steps { ciPipeline() }
+    environment {
+        IMAGE_NAME = 'springboot-jenkins-actions-poc'
     }
 
-    stage('DEV Deployment') {
-      when { expression { params.DEPLOY_DEV ?: false } }
-      steps { deployWithHelm('development', env.IMAGE_NAME, env.IMAGE_TAG) }
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+
+                script {
+                    env.IMAGE_TAG = env.GIT_COMMIT
+                }
+
+                echo "Git Commit : ${env.GIT_COMMIT}"
+                echo "Image Tag  : ${env.IMAGE_TAG}"
+            }
+        }
+
+        stage('Build & Unit Test') {
+            steps {
+                buildAndTest()
+            }
+        }
+
+        stage('Quality Scan') {
+            steps {
+                qualityScan()
+            }
+        }
+
+        stage('Security Scan') {
+            steps {
+                securityScan()
+            }
+        }
+
+        /*
+        stage('Docker Build') {
+            steps {
+                buildAndPushImage(
+                    imageName: env.IMAGE_NAME,
+                    imageTag: env.IMAGE_TAG
+                )
+            }
+        }
+        */
+
+        stage('Helm Validation') {
+            steps {
+                deployWithHelm(
+                    environment: 'validation',
+                    imageName: env.IMAGE_NAME,
+                    imageTag: env.IMAGE_TAG,
+                    validationOnly: true
+                )
+            }
+        }
+
+        stage('Archive Artifact') {
+            steps {
+                publishArtifact()
+            }
+        }
+
+        stage('DEV Deployment') {
+            steps {
+                deployWithHelm(
+                    environment: 'development',
+                    imageName: env.IMAGE_NAME,
+                    imageTag: env.IMAGE_TAG
+                )
+            }
+        }
     }
 
-    stage('PROD Approval') {
-      when { expression { params.DEPLOY_PROD ?: false } }
-      steps { input message: 'Approve production deployment?', ok: 'Deploy' }
-    }
+    post {
+        success {
+            echo "========================================"
+            echo "JENKINS CI/CD COMPLETED SUCCESSFULLY"
+            echo "Git SHA   : ${env.GIT_COMMIT}"
+            echo "Image Tag : ${env.IMAGE_TAG}"
+            echo "Environment: development"
+            echo "========================================"
+        }
 
-    stage('PROD Deployment') {
-      when { expression { params.DEPLOY_PROD ?: false } }
-      steps { deployWithHelm('production', env.IMAGE_NAME, env.IMAGE_TAG) }
+        failure {
+            echo "Jenkins pipeline failed"
+        }
     }
-  }
 }
